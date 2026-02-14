@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import type { QuizState, QuizType, Question, MCQQuestion, OpenEndedQuestion, TrueFalseQuestion } from '../types/quiz';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:5000";
+const API_BASE = "http://127.0.0.1:5000";
 
 function endpointFor(type: QuizType) {
   switch (type) {
@@ -20,6 +20,7 @@ function endpointFor(type: QuizType) {
   }
 }
 
+// Helpers to score by type
 function scoreQuiz(type: QuizType, questions: Question[], answers: string[]) {
   let score = 0;
 
@@ -27,7 +28,7 @@ function scoreQuiz(type: QuizType, questions: Question[], answers: string[]) {
     const qs = questions as MCQQuestion[];
     for (let i = 0; i < qs.length; i++) {
       const a = answers[i];
-      if (!a) continue;
+      if (a === "") continue;
       const chosen = Number(a);
       if (!Number.isNaN(chosen) && chosen === qs[i].answerIndex) score++;
     }
@@ -38,14 +39,14 @@ function scoreQuiz(type: QuizType, questions: Question[], answers: string[]) {
     const qs = questions as TrueFalseQuestion[];
     for (let i = 0; i < qs.length; i++) {
       const a = answers[i];
-      if (!a) continue;
+      if (a === "") continue;
       const chosen = a.toLowerCase() === "true";
       if (chosen === qs[i].answer) score++;
     }
     return score;
   }
 
-  // open-ended (loose scoring)
+  // open-ended: basic contains-match (optional; you can also score 0 and just show model answers)
   const qs = questions as OpenEndedQuestion[];
   for (let i = 0; i < qs.length; i++) {
     const model = (qs[i].answer || "").toLowerCase();
@@ -68,9 +69,10 @@ export default function Home() {
     error: null,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleQuizSetup = async (type: string, topic: string, numQuestions: number, docIdArg: string) => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  const handleQuizSetup = async (type: string, topic: string, numQuestions: number, docId: string): Promise<void> => {
+    // Normalize old UI value "mcq" -> "mcqs"
     const normalizedType = (type === "mcq" ? "mcqs" : type) as QuizType;
 
     setIsLoading(true);
@@ -91,59 +93,72 @@ export default function Home() {
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: topic, qs: numQuestions, doc_id: docIdArg }),
+        body: JSON.stringify({ query: topic, qs: numQuestions, doc_id: docId }),
       });
 
       const data = await response.json();
 
-      if (data.status !== "success") throw new Error(data.error || "Failed to fetch questions");
+      if (data.status !== "success") {
+        throw new Error(data.error || "Failed to fetch questions");
+      }
 
       const questions: Question[] = Array.isArray(data.questions) ? data.questions : [];
+
+      // Prepare empty answer slots
       const answers = new Array(questions.length).fill("");
 
-      setQuizState((prev) => ({ ...prev, questions, answers }));
-    } catch (e) {
-      console.error(e);
-      setQuizState((prev) => ({ ...prev, error: "An error occurred. Please try again." }));
+      setQuizState((prev) => ({
+        ...prev,
+        questions,
+        answers,
+      }));
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      setQuizState((prev) => ({
+        ...prev,
+        error: "An error occurred. Please try again.",
+      }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuizComplete = (answers: string[]) => {
+  const handleQuizComplete = (answers: string[]): void => {
     const score = scoreQuiz(quizState.type, quizState.questions, answers);
     setQuizState((prev) => ({ ...prev, stage: 'results', answers, score }));
   };
 
-  // IMPORTANT: keep docId so user can take another quiz from same PDF
-  const handleRestart = () => {
-    setQuizState((prev) => ({
-      ...prev,
+  const handleRestart = (): void => {
+    setQuizState({
       stage: 'setup',
+      type: "open-ended",
       topic: '',
       questions: [],
       answers: [],
       score: 0,
       error: null,
-    }));
+    });
   };
 
   return (
-    <main className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+    <main className="min-h-screen text-zinc-900 dark:text-zinc-50 bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-4 py-10">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center rounded-full border border-zinc-200/60 bg-white/70 px-3 py-1 text-xs text-zinc-600 shadow-sm dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:text-zinc-300">
-            AI-powered PDF Quiz Generator
-          </div>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight">
-            DocQuiz
-          </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Upload once. Generate unlimited quizzes from your document.
-          </p>
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+          PDF → Quiz Generator
         </div>
 
-        <Card className="border-zinc-200/60 bg-white/70 shadow-sm backdrop-blur dark:border-zinc-800/60 dark:bg-zinc-950/40">
+        <h1 className="mt-4 text-4xl font-semibold tracking-tight">
+          DocQuiz
+        </h1>
+
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          Upload a PDF once, generate unlimited quizzes from it.
+        </p>
+      </div>
+
+  
+      <Card className="rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white/70 dark:bg-zinc-950/60 backdrop-blur shadow-xl shadow-zinc-950/10">
           <CardContent className="p-6 md:p-8">
             {quizState.stage === 'setup' && (
               <QuizSetup
@@ -153,7 +168,7 @@ export default function Home() {
                 setDocId={setDocId}
               />
             )}
-
+  
             {quizState.stage === 'quiz' && (
               isLoading ? (
                 <div className="flex flex-col items-center justify-center py-16">
@@ -166,7 +181,7 @@ export default function Home() {
                 <div className="text-center space-y-3 py-10">
                   <p className="text-sm text-red-500">{quizState.error}</p>
                   <Button onClick={handleRestart} variant="outline">
-                    Back
+                    Try again
                   </Button>
                 </div>
               ) : (
@@ -177,7 +192,7 @@ export default function Home() {
                 />
               )
             )}
-
+  
             {quizState.stage === 'results' && (
               <Results
                 questions={quizState.questions}
@@ -189,11 +204,11 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
-
-        <p className="mt-6 text-center text-xs text-zinc-500">
+  
+        <p className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-500">
           Powered by Chroma + BGE embeddings + Ollama
         </p>
       </div>
     </main>
-  );
+  );  
 }

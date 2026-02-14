@@ -167,11 +167,16 @@ function OpenEndedView({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={6}
-        className="w-full p-3 rounded-xl border border-zinc-200/70 bg-white text-zinc-900 placeholder:text-zinc-400
-                   focus:outline-none focus:ring-2 focus:ring-zinc-900/20
-                   dark:border-zinc-800/70 dark:bg-zinc-950/30 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-100/20"
+        className="
+          w-full rounded-xl border px-4 py-3
+          bg-white text-zinc-900 placeholder:text-zinc-400
+          dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500
+          border-zinc-200 dark:border-zinc-800
+          focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:focus:ring-zinc-500/30
+        "
         placeholder="Type your answer..."
       />
+
       <div className="text-xs text-zinc-600 dark:text-zinc-400">Tip: short answers are fine.</div>
     </div>
   );
