@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from 'lucide-react';
 import { Upload, FileText, X } from "lucide-react";
 import { useRef } from "react";
+import { API_BASE } from "@/lib/api";
+
 
 interface QuizSetupProps {
   onSetup: (type: string, topic: string, numQuestions: number, docId: string) => void;
@@ -48,7 +50,7 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
       const form = new FormData();
       form.append("file", file);
   
-      const res = await fetch("http://127.0.0.1:5000/upload-pdf", {
+      const res = await fetch(`${API_BASE}/upload-pdf`, {
         method: "POST",
         body: form,
       });

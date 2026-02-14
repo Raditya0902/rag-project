@@ -8,8 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import type { QuizState, QuizType, Question, MCQQuestion, OpenEndedQuestion, TrueFalseQuestion } from '../types/quiz';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:5000";
+import { API_BASE } from "@/lib/api";
 
 function endpointFor(type: QuizType) {
   switch (type) {
