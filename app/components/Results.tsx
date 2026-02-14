@@ -32,7 +32,6 @@ function isCorrect(type: QuizType, q: Question, userAnswer: string): boolean {
     return chosen === qq.answer;
   }
 
-  // open-ended (very loose scoring)
   const qq = q as OpenEndedQuestion;
   const model = (qq.answer || "").toLowerCase();
   const user = (userAnswer || "").toLowerCase();
@@ -75,18 +74,18 @@ function displayCorrectAnswer(type: QuizType, q: Question): string {
 
 export default function Results({ questions, answers, score, type, onRestart }: ResultsProps) {
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">Quiz Results</CardTitle>
+    <Card className="w-full border-0 bg-transparent shadow-none">
+      <CardHeader className="px-0 pt-0">
+        <CardTitle className="text-2xl font-semibold text-center">Results</CardTitle>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="px-0 space-y-6">
         {type !== 'open-ended' && (
           <div className="text-center">
-            <p className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-              {score} / {questions.length}
+            <p className="text-4xl font-semibold">
+              {score} <span className="text-zinc-500">/ {questions.length}</span>
             </p>
-            <p className="text-xl mt-2">Correct Answers</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Correct answers</p>
           </div>
         )}
 
@@ -95,46 +94,48 @@ export default function Results({ questions, answers, score, type, onRestart }: 
             const correct = isCorrect(type, q, answers[index] ?? "");
 
             return (
-              <Card
+              <div
                 key={index}
-                className={`p-4 rounded-lg border ${
+                className={[
+                  "rounded-2xl border p-4",
+                  "border-zinc-200/60 bg-white/60 dark:border-zinc-800/60 dark:bg-zinc-950/30",
                   type !== "open-ended"
-                    ? correct
-                      ? "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/20"
-                      : "border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/20"
-                    : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
-                }`}
+                    ? (correct
+                      ? "ring-1 ring-emerald-500/20"
+                      : "ring-1 ring-red-500/20")
+                    : "",
+                ].join(" ")}
               >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-medium">{(q as any).question}</p>
 
-                <CardContent>
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="font-semibold">{q.question}</p>
-                    {type !== 'open-ended' && (
-                      correct
-                        ? <CheckCircle className="text-green-600 dark:text-green-400 shrink-0" />
-                        : <XCircle className="text-red-600 dark:text-red-400 shrink-0" />
-                    )}
-                  </div>
+                  {type !== 'open-ended' && (
+                    correct
+                      ? <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
+                      : <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+                  )}
+                </div>
 
-                  <div className="mt-3 space-y-1">
-                    <p>
-                      <strong>Your Answer:</strong>{" "}
-                      {displayUserAnswer(type, q, answers[index] ?? "")}
-                    </p>
-                    <p>
-                      <strong>Correct Answer:</strong>{" "}
-                      {displayCorrectAnswer(type, q)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="mt-3 space-y-1 text-sm">
+                  <p>
+                    <span className="text-zinc-500">Your answer:</span>{" "}
+                    <span className="font-medium">{displayUserAnswer(type, q, answers[index] ?? "")}</span>
+                  </p>
+                  <p>
+                    <span className="text-zinc-500">Correct answer:</span>{" "}
+                    <span className="font-medium">{displayCorrectAnswer(type, q)}</span>
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>
       </CardContent>
 
-      <CardFooter>
-        <Button onClick={onRestart} className="w-full"> Generate Another Quiz (same PDF) </Button>
+      <CardFooter className="px-0">
+        <Button onClick={onRestart} className="w-full">
+          Take another quiz
+        </Button>
       </CardFooter>
     </Card>
   );

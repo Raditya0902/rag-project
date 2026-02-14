@@ -23,16 +23,8 @@ export interface QuizState {
   type: QuizType;
   topic: string;
 
-  // from backend
   questions: Question[];
-  rawResponse?: string; // Raw response string for Quiz component parsing
-
-  // user selections / inputs
-  // - mcqs: store selected option index as string ("0".."3") or "" if none
-  // - true-false: store "true"/"false" or ""
-  // - open-ended: store the typed answer
   answers: string[];
-
   score: number;
   error: string | null;
 }

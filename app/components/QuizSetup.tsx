@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from 'lucide-react';
-import { Upload, FileText, X } from "lucide-react";
-import { useRef } from "react";
+import { Loader2, Upload, FileText, X } from 'lucide-react';
 
 interface QuizSetupProps {
   onSetup: (type: string, topic: string, numQuestions: number, docId: string) => void;
@@ -25,77 +23,78 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
   const [type, setType] = useState<string>('');
   const [topic, setTopic] = useState<string>('');
   const [numQuestions, setNumQuestions] = useState<number>(5);
+
   const [file, setFile] = useState<File | null>(null);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadedName, setUploadedName] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (type && numQuestions > 0 && docId) {
-      onSetup(type, topic, numQuestions, docId);
-    }
+    if (type && numQuestions > 0 && docId) onSetup(type, topic, numQuestions, docId);
   };
 
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
     setUploadError(null);
-  
+
     try {
       const form = new FormData();
       form.append("file", file);
-  
-      const res = await fetch("http://127.0.0.1:5000/upload-pdf", {
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:5000"}/upload-pdf`, {
         method: "POST",
         body: form,
       });
-  
+
       const data = await res.json();
       if (data.status !== "success") throw new Error(data.error || "Upload failed");
-  
+
       setDocId(data.doc_id);
       setUploadedName(data.filename ?? file.name);
-
+      setFile(null); // optional: clear selected file after upload
     } catch (e: any) {
-      setUploadError(e.message || "Upload failed");
+      setUploadError(e?.message || "Upload failed");
     } finally {
       setUploading(false);
     }
   };
-  
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">Set Up Your Quiz</CardTitle>
+    <Card className="border-0 bg-transparent shadow-none">
+      <CardHeader className="px-0 pt-0">
+        <CardTitle className="text-2xl font-semibold text-center">Set up your quiz</CardTitle>
       </CardHeader>
-      <CardContent>
+
+      <CardContent className="px-0">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-lg font-semibold">Select Quiz Type</Label>
-            <RadioGroup value={type} onValueChange={setType} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {['open-ended', 'mcqs', 'true-false'].map((quizType) => (
+            <Label className="text-sm font-medium">Quiz type</Label>
+            <RadioGroup value={type} onValueChange={setType} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {(['open-ended', 'mcqs', 'true-false'] as const).map((quizType) => (
                 <div key={quizType} className="flex items-center space-x-2">
                   <RadioGroupItem value={quizType} id={quizType} className="peer sr-only" />
-                  <Label htmlFor={quizType} className="flex items-center justify-center rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/40 px-4 py-3 text-sm font-medium
-                  hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition
-                  peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:bg-zinc-900 peer-data-[state=checked]:text-white
-                  dark:peer-data-[state=checked]:border-zinc-100 dark:peer-data-[state=checked]:bg-zinc-100 dark:peer-data-[state=checked]:text-zinc-900">
-                      {QUIZ_TYPE_LABELS[quizType] ?? quizType}
+                  <Label
+                    htmlFor={quizType}
+                    className="flex items-center justify-center rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/40 px-4 py-3 text-sm font-medium
+                      hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition
+                      peer-data-[state=checked]:border-zinc-900 peer-data-[state=checked]:bg-zinc-900 peer-data-[state=checked]:text-white
+                      dark:peer-data-[state=checked]:border-zinc-100 dark:peer-data-[state=checked]:bg-zinc-100 dark:peer-data-[state=checked]:text-zinc-900"
+                  >
+                    {QUIZ_TYPE_LABELS[quizType]}
                   </Label>
-
                 </div>
               ))}
             </RadioGroup>
           </div>
-          
-          <div className="space-y-2">
-            <Label className="text-lg font-semibold">PDF Source</Label>
 
-            <div className="rounded-2xl bg-white/5 dark:bg-zinc-900/40 p-4 md:p-5 shadow-sm">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">PDF source</Label>
+
+            <div className="rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/40 p-4 md:p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-medium flex items-center gap-2">
@@ -103,7 +102,7 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
                     Upload 1 PDF (max 20MB)
                   </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    You can generate unlimited quizzes from this uploaded document.
+                    Generate unlimited quizzes from this uploaded document.
                   </p>
                 </div>
 
@@ -119,7 +118,6 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
                 </span>
               </div>
 
-              {/* Hidden native input */}
               <input
                 ref={fileRef}
                 type="file"
@@ -128,7 +126,6 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
 
-              {/* Pretty picker row */}
               <div className="mt-4 flex flex-col gap-3">
                 <div className="flex flex-col md:flex-row md:items-center gap-3">
                   <Button
@@ -144,7 +141,7 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
                   <div className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
                     {file ? (
                       <span className="font-medium">{file.name}</span>
-                    ) : uploadedName ? (
+                    ) : uploadedName && docId ? (
                       <>
                         <span className="text-zinc-500 dark:text-zinc-400">Uploaded:</span>{" "}
                         <span className="font-medium">{uploadedName}</span>
@@ -156,13 +153,8 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={!file || uploading}
-                    className="gap-2"
-                  >
-                    {uploading ? "Indexing..." : docId ? "Re-upload & Replace" : "Upload & Index"}
+                  <Button type="button" onClick={handleUpload} disabled={!file || uploading} className="gap-2">
+                    {uploading ? "Indexing..." : docId ? "Re-upload & replace" : "Upload & index"}
                   </Button>
 
                   {docId && (
@@ -187,32 +179,32 @@ export default function QuizSetup({ onSetup, isLoading, docId, setDocId }: QuizS
             </div>
           </div>
 
-          
           <div className="space-y-2">
-            <Label htmlFor="topic" className="text-lg font-semibold">Quiz Topic (optional)</Label>
+            <Label htmlFor="topic" className="text-sm font-medium">Quiz topic (optional)</Label>
             <Input
               id="topic"
               value={topic}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTopic(e.target.value)}
-              placeholder="Enter a topic or write you need a random quiz"
-              className="w-full p-2 border rounded"
-              required={false}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., Backpropagation basics"
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="num-questions" className="text-lg font-semibold">Number of Questions</Label>
+            <Label htmlFor="num-questions" className="text-sm font-medium">Number of questions</Label>
             <Input
               id="num-questions"
               type="number"
               value={numQuestions}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNumQuestions(Number(e.target.value))}
-              placeholder="Enter number of questions (e.g., 5)"
+              onChange={(e) => setNumQuestions(Number(e.target.value))}
               min={1}
-              className="w-full p-2 border rounded"
             />
           </div>
-          <Button type="submit" className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200" disabled={!type || isLoading || !docId}>
 
+          <Button
+            type="submit"
+            className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            disabled={!type || isLoading || !docId}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

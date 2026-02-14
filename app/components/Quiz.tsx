@@ -18,23 +18,13 @@ interface QuizProps {
 
 export default function Quiz({ questions, type, onComplete }: QuizProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // answers are stored as:
-  // - mcqs: "0" | "1" | "2" | "3"
-  // - true-false: "true" | "false"
-  // - open-ended: free text
-  const [answers, setAnswers] = useState<string[]>(
-    () => new Array(questions.length).fill("")
-  );
+  const [answers, setAnswers] = useState<string[]>(() => new Array(questions.length).fill(""));
 
   const current = questions[currentIndex];
-
   const isLast = currentIndex === questions.length - 1;
 
   const canGoNext = useMemo(() => {
-    // allow skipping if you want: return true
-    // or require an answer:
-    return answers[currentIndex].trim().length > 0;
+    return (answers[currentIndex] || "").trim().length > 0;
   }, [answers, currentIndex]);
 
   const setAnswer = (value: string) => {
@@ -46,74 +36,40 @@ export default function Quiz({ questions, type, onComplete }: QuizProps) {
   };
 
   const handleNext = () => {
-    if (isLast) {
-      onComplete(answers);
-      return;
-    }
+    if (isLast) return onComplete(answers);
     setCurrentIndex((i) => i + 1);
   };
 
-  const handlePrev = () => {
-    setCurrentIndex((i) => Math.max(0, i - 1));
-  };
+  const handlePrev = () => setCurrentIndex((i) => Math.max(0, i - 1));
 
   if (!questions || questions.length === 0) {
-    return (
-      <div className="text-center">
-        <p className="text-lg">No questions returned.</p>
-      </div>
-    );
+    return <div className="text-center text-sm text-zinc-600 dark:text-zinc-400">No questions returned.</div>;
   }
 
   return (
-    <div className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="text-sm text-muted-foreground">
+    <div className="space-y-6">
+      <div className="text-xs text-zinc-600 dark:text-zinc-400">
         Question {currentIndex + 1} of {questions.length}
       </div>
-      <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full bg-blue-500 transition-all"
-          style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-        />
-      </div>
 
+      <div className="text-xl font-semibold">{(current as any).question}</div>
 
-      {/* Question text */}
-      <div className="text-xl font-semibold">
-        {"question" in current ? current.question : "Question"}
-      </div>
-
-      {/* Render by type */}
       {type === "mcqs" && (
-        <MCQView
-          q={current as MCQQuestion}
-          value={answers[currentIndex]}
-          onChange={setAnswer}
-        />
+        <MCQView q={current as MCQQuestion} value={answers[currentIndex]} onChange={setAnswer} />
       )}
 
       {type === "true-false" && (
-        <TrueFalseView
-          q={current as TrueFalseQuestion}
-          value={answers[currentIndex]}
-          onChange={setAnswer}
-        />
+        <TrueFalseView value={answers[currentIndex]} onChange={setAnswer} />
       )}
 
       {type === "open-ended" && (
-        <OpenEndedView
-          q={current as OpenEndedQuestion}
-          value={answers[currentIndex]}
-          onChange={setAnswer}
-        />
+        <OpenEndedView value={answers[currentIndex]} onChange={setAnswer} />
       )}
 
-      {/* Nav */}
       <div className="flex items-center justify-between pt-2">
         <Button variant="outline" onClick={handlePrev} disabled={currentIndex === 0}>
           Previous
         </Button>
-
         <Button onClick={handleNext} disabled={!canGoNext}>
           {isLast ? "Finish" : "Next"}
         </Button>
@@ -141,9 +97,10 @@ function MCQView({
             type="button"
             onClick={() => onChange(String(idx))}
             className={[
-              "w-full text-left p-3 rounded-lg border transition",
-              selected ? "border-zinc-900 bg-zinc-50 ring-2 ring-zinc-900/10 dark:border-zinc-100 dark:bg-zinc-900/40 dark:ring-zinc-100/10" : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
-
+              "w-full text-left p-3 rounded-xl border transition",
+              selected
+                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                : "border-zinc-200/70 bg-white/60 hover:bg-white dark:border-zinc-800/70 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40",
             ].join(" ")}
           >
             <div className="font-medium">
@@ -160,7 +117,6 @@ function TrueFalseView({
   value,
   onChange,
 }: {
-  q: TrueFalseQuestion;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -173,18 +129,23 @@ function TrueFalseView({
         type="button"
         onClick={() => onChange("true")}
         className={[
-          "flex-1 p-3 rounded-lg border transition text-center font-medium",
-          selectedTrue ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" : "border-border",
+          "flex-1 p-3 rounded-xl border transition text-center font-medium",
+          selectedTrue
+            ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+            : "border-zinc-200/70 bg-white/60 hover:bg-white dark:border-zinc-800/70 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40",
         ].join(" ")}
       >
         True
       </button>
+
       <button
         type="button"
         onClick={() => onChange("false")}
         className={[
-          "flex-1 p-3 rounded-lg border transition text-center font-medium",
-          selectedFalse ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" : "border-border",
+          "flex-1 p-3 rounded-xl border transition text-center font-medium",
+          selectedFalse
+            ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+            : "border-zinc-200/70 bg-white/60 hover:bg-white dark:border-zinc-800/70 dark:bg-zinc-950/30 dark:hover:bg-zinc-900/40",
         ].join(" ")}
       >
         False
@@ -197,7 +158,6 @@ function OpenEndedView({
   value,
   onChange,
 }: {
-  q: OpenEndedQuestion;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -207,18 +167,12 @@ function OpenEndedView({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={6}
-        className="
-          w-full rounded-xl border px-4 py-3
-          bg-white text-zinc-900 placeholder:text-zinc-400
-          dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500
-          border-zinc-200 dark:border-zinc-800
-          focus:outline-none focus:ring-2 focus:ring-zinc-400/30 dark:focus:ring-zinc-500/30
-        "
+        className="w-full p-3 rounded-xl border border-zinc-200/70 bg-white text-zinc-900 placeholder:text-zinc-400
+                   focus:outline-none focus:ring-2 focus:ring-zinc-900/20
+                   dark:border-zinc-800/70 dark:bg-zinc-950/30 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-100/20"
         placeholder="Type your answer..."
       />
-      <div className="text-xs text-muted-foreground">
-        Tip: short answers are fine.
-      </div>
+      <div className="text-xs text-zinc-600 dark:text-zinc-400">Tip: short answers are fine.</div>
     </div>
   );
 }
