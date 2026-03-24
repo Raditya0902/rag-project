@@ -1,50 +1,103 @@
-# DocQuiz — RAG PDF quiz generator
+# DocQuiz: RAG-Based Quiz Generator from PDFs
 
-Upload a PDF, index it into **Chroma** with **BGE** embeddings, then generate **open-ended**, **multiple-choice**, or **true/false** quizzes using **Ollama** (default: `llama3`). A **Next.js** UI in `quiz-generator/` talks to a **Flask** API.
+DocQuiz generates quizzes directly from uploaded PDF documents.
 
-## Architecture
+It combines:
+- Retrieval-Augmented Generation (RAG) for document-grounded context
+- Local vector search with Chroma
+- Local LLM inference with Ollama (`llama3`)
+- A Flask API backend and Next.js frontend
 
-| Part | Role |
-|------|------|
-| `server.py` | Flask app on `http://127.0.0.1:5000`: `/upload-pdf`, `/open-ended`, `/mcqs`, `/true-false`. |
-| `quiz-generator/` | Next.js 15 frontend (`npm run dev` → usually `http://localhost:3000`). |
-| `vectorization.py` | Optional one-off script: index PDFs under `data/` into Chroma (`database/`). |
-| `database/` | Chroma persistence (local, should not be committed; see below). |
-| `uploads/` | Saved uploads from the API (local, should not be committed). |
+## Problem Statement
+
+Teachers and students often have long study material (slides, notes, books) but limited time to create practice questions manually.
+
+DocQuiz solves this by:
+- ingesting a PDF,
+- indexing it as embeddings,
+- retrieving relevant chunks for a query/topic,
+- generating structured quiz questions in JSON format.
+
+Supported quiz types:
+- Open-ended
+- Multiple-choice (MCQs)
+- True/False
+
+## Core Concept (How It Works)
+
+1. **Upload PDF**
+   - Endpoint: `POST /upload-pdf`
+   - File is stored in `uploads/`
+   - PDF text is loaded and chunked
+   - Chunks are embedded with `BAAI/bge-small-en`
+   - Stored in Chroma under a unique `doc_id` collection
+
+2. **Retrieve Context**
+   - For quiz requests (`/open-ended`, `/mcqs`, `/true-false`), backend runs similarity search on that `doc_id` collection.
+   - Top chunks are joined as context.
+
+3. **Generate Quiz**
+   - Backend builds a strict JSON prompt.
+   - Calls Ollama (`llama3`) with context + user query.
+   - Parses model output into valid JSON response.
+
+4. **Render in UI**
+   - Frontend (`quiz-generator/`) uploads PDF, stores `doc_id`, requests quiz questions, and renders quiz flow + results.
+
+## Project Structure
+
+| Path | Purpose |
+|------|---------|
+| `server.py` | Flask backend API, retrieval, prompt construction, quiz generation |
+| `vectorization.py` | Optional one-time script to pre-index sample PDFs from `data/` |
+| `quiz-generator/` | Next.js frontend (App Router) |
+| `database/` | Local Chroma storage (gitignored runtime data) |
+| `uploads/` | Uploaded PDFs (gitignored runtime data) |
+| `data/` | Sample local PDFs for experimentation |
+
+## Tech Stack
+
+- Python + Flask
+- LangChain + Chroma
+- HuggingFace BGE embeddings (`BAAI/bge-small-en`)
+- Ollama (`llama3`)
+- Next.js 15 + React + Tailwind CSS
 
 ## Prerequisites
 
-- **Python** 3.11+ (3.13 ok if your stack supports it)
-- **Ollama** with a chat model, e.g. `ollama pull llama3`
-- **Node.js** 18+ for the frontend
-
-## Backend
+- Python 3.11+ (3.13 also works in this setup)
+- Node.js 18+
+- Ollama installed and running locally
+- Ollama model pulled:
 
 ```bash
-cd /path/to/LLM_quiz_bot
+ollama pull llama3
+```
+
+## Reproduce the Project (End-to-End)
+
+### 1) Clone and setup backend
+
+```bash
+git clone https://github.com/Raditya0902/rag-project.git
+cd rag-project
+
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# If embedding/CPU setup fails, follow PyTorch install instructions for your platform.
+```
 
+### 2) Start backend
+
+```bash
 python server.py
 ```
 
-API runs with `debug=True` on port **5000** by default.
+Backend runs at: `http://127.0.0.1:5000`
 
-### Quick API test
+### 3) Setup and start frontend
 
-```bash
-curl -s -F "file=@data/07-0 Neural Network.pdf" http://127.0.0.1:5000/upload-pdf
-# Use returned doc_id:
-curl -s -X POST http://127.0.0.1:5000/mcqs \
-  -H "Content-Type: application/json" \
-  -d '{"query":"neural networks","qs":3,"doc_id":"<DOC_ID>"}'
-```
-
-Use `@/path/to/file.pdf` with curl so the file is actually attached (the `@` matters).
-
-## Frontend
+Open a second terminal:
 
 ```bash
 cd quiz-generator
@@ -52,45 +105,44 @@ npm install
 npm run dev
 ```
 
-Keep `server.py` running; the UI calls `http://127.0.0.1:5000`.
+Frontend runs at: `http://localhost:3000`
 
-## Optional: seed index from `data/`
+### 4) Use the app
+
+1. Open `http://localhost:3000`
+2. Upload a PDF
+3. Choose quiz type and number of questions
+4. Start quiz
+
+## API Reproduction via cURL (without UI)
+
+### Upload PDF
+
+```bash
+curl -s -F "file=@/absolute/path/to/your.pdf" http://127.0.0.1:5000/upload-pdf
+```
+
+Important: `@` must be present in curl form upload.
+
+### Generate MCQs
+
+```bash
+curl -s -X POST http://127.0.0.1:5000/mcqs \
+  -H "Content-Type: application/json" \
+  -d '{"query":"neural networks","qs":3,"doc_id":"<DOC_ID_FROM_UPLOAD>"}'
+```
+
+## Optional: Pre-index Sample PDFs
 
 ```bash
 python vectorization.py
 ```
 
-This uses fixed filenames under `data/` and a different chunk size than `/upload-pdf`. Normal use is **upload via UI or `/upload-pdf`** so each document gets its own Chroma collection (`doc_id`).
+This indexes files from `data/` into default Chroma storage.  
+Primary flow remains: upload with `/upload-pdf` and use returned `doc_id`.
 
----
+## Notes and Good Practices
 
-## GitHub / repository hygiene (important)
-
-If this repo was pushed as-is, it may have **serious problems**:
-
-1. **`quiz-generator/node_modules/`** — tens of thousands of files should **never** be committed. Clone size and PRs become unusable.
-2. **`quiz-generator/.next/`** — build output; should be ignored (your index may have these **staged**).
-3. **`database/`** — local Chroma DB; large and regeneratable.
-4. **`uploads/`** — user uploads may include **personal or copyrighted PDFs**; they should not be public on GitHub.
-5. **No root `.gitignore`** — fixed in this tree by adding `.gitignore`; ensure it is committed.
-6. **`quiz-generator/.git`** — a **nested** Git repo inside `quiz-generator/` splits history from the parent. For one repo on GitHub, remove the inner `.git` (after backing up) and treat `quiz-generator` as a normal folder, or convert to a proper **submodule**.
-7. **Branch divergence** — if `main` and `origin/main` both moved, reconcile with merge/rebase before pushing.
-
-### Stop tracking junk (keep files on disk)
-
-From the repo root:
-
-```bash
-git rm -r --cached quiz-generator/node_modules quiz-generator/.next database uploads 2>/dev/null || true
-git rm --cached quiz-generator/.DS_Store 2>/dev/null || true
-git add .gitignore
-git commit -m "Stop tracking build artifacts, node_modules, local DB, and uploads"
-```
-
-If `node_modules` or large PDFs were **already pushed**, shrinking the remote needs history rewrite (e.g. `git filter-repo`) or a fresh repo — coordinate with anyone who cloned.
-
----
-
-## License / content
-
-Only upload PDFs you have the **right** to use and distribute. Sample lecture PDFs in `data/` are for local development; add them to `.gitignore` if you cannot redistribute them.
+- `database/` and `uploads/` are runtime artifacts and should not be committed.
+- `quiz-generator/.next` and `quiz-generator/node_modules` are build/dependency outputs and are gitignored.
+- Use only PDFs you are authorized to use/distribute.
