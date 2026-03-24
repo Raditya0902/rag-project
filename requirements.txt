@@ -1,0 +1,15 @@
+# Backend (Python). Use Python 3.11+ recommended; 3.13 works on many setups.
+# After install, pull an Ollama model: ollama pull llama3
+
+Flask>=3.0,<4
+flask-cors>=4.0,<7
+chromadb>=0.5,<2
+langchain-community>=0.3,<1
+langchain-chroma>=0.2,<2
+langchain-text-splitters>=0.3,<2
+ollama>=0.3,<1
+pypdf>=4.0,<7
+sentence-transformers>=3.0,<6
+
+# PyTorch: install the wheel that matches your OS/CUDA from https://pytorch.org
+# if `pip install torch` is not enough for your machine.
